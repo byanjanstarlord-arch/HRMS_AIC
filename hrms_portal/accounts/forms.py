@@ -170,3 +170,16 @@ class UserProfileForm(forms.ModelForm):
                 'placeholder': 'Department'
             }),
         }
+
+
+class TopUpLeavesForm(forms.ModelForm):
+    """Form for admin to top-up or set user leave balances"""
+
+    class Meta:
+        model = User
+        fields = ['casual_leaves', 'earned_leaves', 'medical_leaves']
+        widgets = {
+            'casual_leaves': forms.NumberInput(attrs={'class': 'form-input', 'min': 0}),
+            'earned_leaves': forms.NumberInput(attrs={'class': 'form-input', 'min': 0}),
+            'medical_leaves': forms.NumberInput(attrs={'class': 'form-input', 'min': 0}),
+        }

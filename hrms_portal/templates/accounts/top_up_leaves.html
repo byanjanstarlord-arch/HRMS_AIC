@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Top Up Leaves - Admin{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <nav class="navbar">
+        <!-- minimal navbar reuse -->
+        <div class="navbar-brand">
+            <a href="{% url 'admin_dashboard' %}">Admin</a>
+        </div>
+    </nav>
+
+    <div class="dashboard-content">
+        <div class="page-header">
+            <h1>Top Up Leaves for {{ employee.full_name|default:employee.username }}</h1>
+            <p>Adjust leave balances for the selected employee.</p>
+        </div>
+
+        <div class="form-card">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Balances</button>
+                    <a href="{% url 'employees_list' %}" class="btn btn-link">Back to employees</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

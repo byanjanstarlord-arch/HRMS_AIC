@@ -110,14 +110,11 @@
                         </label>
                         <select name="leave_type" id="id_leave_type" class="form-select" required>
                             <option value="" disabled selected>Select leave type</option>
-                            <option value="annual">Annual Leave</option>
-                            <option value="sick">Sick Leave</option>
-                            <option value="casual">Casual Leave</option>
+                            <option value="casual">Casual Leave ({{ casual_leaves|default:request.user.casual_leaves }})</option>
+                            <option value="earned">Earned Leave ({{ earned_leaves|default:request.user.earned_leaves }})</option>
+                            <option value="medical">Medical Leave ({{ medical_leaves|default:request.user.medical_leaves }})</option>
                             <option value="maternity">Maternity Leave</option>
-                            <option value="paternity">Paternity Leave</option>
-                            <option value="bereavement">Bereavement Leave</option>
-                            <option value="unpaid">Unpaid Leave</option>
-                            <option value="other">Other</option>
+                            <option value="eol">EOL</option>
                         </select>
                     </div>
                 </div>

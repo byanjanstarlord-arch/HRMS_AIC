@@ -48,6 +48,19 @@ class User(AbstractUser):
         null=True,
         help_text='Full name of the user'
     )
+    # Leave balance fields
+    casual_leaves = models.IntegerField(
+        default=10,
+        help_text='Remaining casual leave days'
+    )
+    earned_leaves = models.IntegerField(
+        default=12,
+        help_text='Remaining earned leave days'
+    )
+    medical_leaves = models.IntegerField(
+        default=15,
+        help_text='Remaining medical leave days'
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -83,3 +96,40 @@ class User(AbstractUser):
         if hasattr(self, 'leave_requests'):
             return self.leave_requests.count()
         return 0
+
+    def get_leave_balance(self, leave_type):
+        """Return available balance for a leave type"""
+        mapping = {
+            'casual': self.casual_leaves,
+            'earned': self.earned_leaves,
+            'medical': self.medical_leaves,
+        }
+        return mapping.get(leave_type, 0)
+
+    def deduct_leaves(self, leave_type, days):
+        """Deduct days from the specified leave balance and save the user"""
+        if days <= 0:
+            return
+        if leave_type == 'casual':
+            self.casual_leaves = max(0, self.casual_leaves - days)
+            self.save(update_fields=['casual_leaves'])
+        elif leave_type == 'earned':
+            self.earned_leaves = max(0, self.earned_leaves - days)
+            self.save(update_fields=['earned_leaves'])
+        elif leave_type == 'medical':
+            self.medical_leaves = max(0, self.medical_leaves - days)
+            self.save(update_fields=['medical_leaves'])
+
+    def add_leaves(self, leave_type, days):
+        """Restore days to the specified leave balance and save the user"""
+        if days <= 0:
+            return
+        if leave_type == 'casual':
+            self.casual_leaves += days
+            self.save(update_fields=['casual_leaves'])
+        elif leave_type == 'earned':
+            self.earned_leaves += days
+            self.save(update_fields=['earned_leaves'])
+        elif leave_type == 'medical':
+            self.medical_leaves += days
+            self.save(update_fields=['medical_leaves'])

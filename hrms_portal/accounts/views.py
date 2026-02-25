@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_protect
 from .models import User
 from .forms import EmployeeRegistrationForm, LoginForm
 from leaves.models import LeaveRequest
+from .forms import TopUpLeavesForm
 
 
 def landing_page(request):
@@ -201,6 +202,34 @@ def employees_list(request):
     employees = User.objects.filter(role='employee').order_by('-created_at')
     
     return render(request, 'accounts/employees_list.html', {'employees': employees})
+
+
+@login_required
+def top_up_leaves(request, user_id):
+    """
+    Admin view to top-up or set leave balances for an employee
+    """
+    # Check if user is an admin
+    if not request.user.is_admin():
+        messages.error(request, 'Access denied.')
+        return redirect('employee_dashboard')
+
+    employee = get_object_or_404(User, id=user_id, role='employee')
+
+    if request.method == 'POST':
+        form = TopUpLeavesForm(request.POST, instance=employee)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Leave balances updated for {employee.full_name or employee.username}.')
+            return redirect('employees_list')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, error)
+    else:
+        form = TopUpLeavesForm(instance=employee)
+
+    return render(request, 'accounts/top_up_leaves.html', {'form': form, 'employee': employee})
 
 
 # ==================== AJAX API VIEWS ====================

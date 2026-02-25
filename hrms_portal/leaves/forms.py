@@ -53,12 +53,17 @@ class LeaveApplicationForm(forms.ModelForm):
     class Meta:
         model = LeaveRequest
         fields = ['leave_type', 'start_date', 'end_date', 'reason']
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
     
     def clean(self):
         """Validate form data"""
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
+        leave_type = cleaned_data.get('leave_type')
         
         if start_date and end_date:
             # Check if start date is not in the past
@@ -68,6 +73,14 @@ class LeaveApplicationForm(forms.ModelForm):
             # Check if end date is after start date
             if end_date < start_date:
                 raise ValidationError({'end_date': 'End date must be after or equal to start date.'})
+
+        # Check available balance for limited leave types
+        if start_date and end_date and leave_type and self.user:
+            days = (end_date - start_date).days + 1
+            if leave_type in ['casual', 'earned', 'medical']:
+                balance = self.user.get_leave_balance(leave_type)
+                if days > balance:
+                    raise ValidationError({'leave_type': f'You cannot apply for {days} day(s). You only have {balance} day(s) left for this leave type.'})
         
         return cleaned_data
     
@@ -76,8 +89,10 @@ class LeaveApplicationForm(forms.ModelForm):
         leave_request = super().save(commit=False)
         if user:
             leave_request.user = user
+        elif self.user:
+            leave_request.user = self.user
         leave_request.status = 'pending'
-        
+
         if commit:
             leave_request.save()
         return leave_request

@@ -15,14 +15,11 @@ class LeaveRequest(models.Model):
     
     # Leave type choices
     LEAVE_TYPE_CHOICES = [
-        ('annual', 'Annual Leave'),
-        ('sick', 'Sick Leave'),
         ('casual', 'Casual Leave'),
+        ('earned', 'Earned Leave'),
+        ('medical', 'Medical Leave'),
         ('maternity', 'Maternity Leave'),
-        ('paternity', 'Paternity Leave'),
-        ('bereavement', 'Bereavement Leave'),
-        ('unpaid', 'Unpaid Leave'),
-        ('other', 'Other'),
+        ('eol', 'EOL'),
     ]
     
     # Status choices
@@ -44,7 +41,7 @@ class LeaveRequest(models.Model):
     leave_type = models.CharField(
         max_length=20,
         choices=LEAVE_TYPE_CHOICES,
-        default='annual',
+        default='casual',
         help_text='Type of leave requested'
     )
     
@@ -89,6 +86,12 @@ class LeaveRequest(models.Model):
         blank=True,
         help_text='Date when the request was approved/rejected'
     )
+
+    # Track whether the leave days were already deducted from user's balance
+    deducted = models.BooleanField(
+        default=False,
+        help_text='Whether the leave days were deducted from employee balance'
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -129,6 +132,22 @@ class LeaveRequest(models.Model):
     
     def approve(self, admin_user, remarks=None):
         """Approve the leave request"""
+        # Before approving, ensure sufficient balance for limited leave types
+        days = self.get_duration_days()
+        if self.leave_type in ['casual', 'earned', 'medical'] and self.user:
+            balance = self.user.get_leave_balance(self.leave_type)
+            if days > balance:
+                raise ValueError(f'Cannot approve: employee has only {balance} day(s) left for {self.get_leave_type_display()}.')
+
+        # Deduct leaves if limited and not already deducted
+        if self.leave_type in ['casual', 'earned', 'medical'] and self.user and not self.deducted:
+            try:
+                self.user.deduct_leaves(self.leave_type, days)
+                self.deducted = True
+            except Exception:
+                # If deduction fails, do not block approval but log could be added
+                pass
+
         self.status = 'approved'
         self.approved_by = admin_user
         self.admin_remarks = remarks
@@ -137,6 +156,15 @@ class LeaveRequest(models.Model):
     
     def reject(self, admin_user, remarks=None):
         """Reject the leave request"""
+        # If days were deducted at application time, restore them
+        if self.deducted and self.user:
+            days = self.get_duration_days()
+            try:
+                self.user.add_leaves(self.leave_type, days)
+            except Exception:
+                pass
+            self.deducted = False
+
         self.status = 'rejected'
         self.approved_by = admin_user
         self.admin_remarks = remarks

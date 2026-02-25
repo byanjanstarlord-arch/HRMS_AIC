@@ -31,7 +31,7 @@ def apply_leave(request):
         return redirect('admin_dashboard')
     
     if request.method == 'POST':
-        form = LeaveApplicationForm(request.POST)
+        form = LeaveApplicationForm(request.POST, user=request.user)
         if form.is_valid():
             leave_request = form.save(user=request.user)
             messages.success(
@@ -45,9 +45,16 @@ def apply_leave(request):
                 for error in errors:
                     messages.error(request, error)
     else:
-        form = LeaveApplicationForm()
-    
-    return render(request, 'leaves/apply_leave.html', {'form': form})
+        form = LeaveApplicationForm(user=request.user)
+
+    context = {
+        'form': form,
+        'casual_leaves': request.user.casual_leaves,
+        'earned_leaves': request.user.earned_leaves,
+        'medical_leaves': request.user.medical_leaves,
+    }
+
+    return render(request, 'leaves/apply_leave.html', context)
 
 
 @login_required
@@ -166,9 +173,12 @@ def approve_leave(request, leave_id):
     # Get remarks from request
     remarks = request.POST.get('remarks', '')
     
-    # Approve the leave
-    leave.approve(admin_user=request.user, remarks=remarks)
-    
+    # Approve the leave (handle insufficient balance)
+    try:
+        leave.approve(admin_user=request.user, remarks=remarks)
+    except ValueError as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
     return JsonResponse({
         'success': True,
         'message': f'Leave request #{leave_id} has been approved successfully.',
