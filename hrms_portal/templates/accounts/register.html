@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Register - HRMS Portal{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <!-- Auth Header -->
+        <div class="auth-header">
+            <a href="{% url 'landing_page' %}" class="auth-logo">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="12" width="48" height="40" rx="4" stroke="currentColor" stroke-width="3" fill="none"/>
+                    <line x1="8" y1="22" x2="56" y2="22" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="20" cy="17" r="2" fill="currentColor"/>
+                    <circle cx="28" cy="17" r="2" fill="currentColor"/>
+                    <circle cx="36" cy="17" r="2" fill="currentColor"/>
+                    <rect x="16" y="30" width="14" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <line x1="36" y1="32" x2="48" y2="32" stroke="currentColor" stroke-width="2"/>
+                    <line x1="36" y1="38" x2="44" y2="38" stroke="currentColor" stroke-width="2"/>
+                    <line x1="36" y1="44" x2="48" y2="44" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </a>
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Register as a new employee</p>
+        </div>
+        
+        <!-- Registration Form -->
+        <div class="auth-card">
+            <form method="post" action="{% url 'register' %}" class="auth-form" id="registerForm">
+                {% csrf_token %}
+                
+                <!-- Full Name -->
+                <div class="form-group">
+                    <label for="id_full_name" class="form-label">
+                        <svg class="label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Full Name
+                    </label>
+                    <input 
+                        type="text" 
+                        name="full_name" 
+                        id="id_full_name" 
+                        class="form-input" 
+                        placeholder="Enter your full name"
+                        required
+                        autocomplete="name"
+                        autofocus
+                    >
+                </div>
+                
+                <!-- Email -->
+                <div class="form-group">
+                    <label for="id_email" class="form-label">
+                        <svg class="label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        Email Address
+                    </label>
+                    <input 
+                        type="email" 
+                        name="email" 
+                        id="id_email" 
+                        class="form-input" 
+                        placeholder="Enter your email"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+                
+                <!-- Employee ID -->
+                <div class="form-group">
+                    <label for="id_employee_id" class="form-label">
+                        <svg class="label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/>
+                            <path d="M8 2v4M16 2v4M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01"/>
+                        </svg>
+                        Employee ID
+                    </label>
+                    <input 
+                        type="text" 
+                        name="employee_id" 
+                        id="id_employee_id" 
+                        class="form-input" 
+                        placeholder="Enter your employee ID"
+                        required
+                        autocomplete="off"
+                    >
+                </div>
+                
+                <!-- Department -->
+                <div class="form-group">
+                    <label for="id_department" class="form-label">
+                        <svg class="label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        Department
+                    </label>
+                    <input 
+                        type="text" 
+                        name="department" 
+                        id="id_department" 
+                        class="form-input" 
+                        placeholder="Enter your department (e.g., HR, IT, Finance)"
+                        required
+                        autocomplete="organization"
+                    >
+                </div>
+                
+                <!-- Password -->
+                <div class="form-group">
+                    <label for="id_password1" class="form-label">
+                        <svg class="label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        Password
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input 
+                            type="password" 
+                            name="password1" 
+                            id="id_password1" 
+                            class="form-input" 
+                            placeholder="Create a password"
+                            required
+                            autocomplete="new-password"
+                            minlength="8"
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('id_password1')">
+                            <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <span class="form-hint">Password must be at least 8 characters</span>
+                </div>
+                
+                <!-- Confirm Password -->
+                <div class="form-group">
+                    <label for="id_password2" class="form-label">
+                        <svg class="label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        Confirm Password
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input 
+                            type="password" 
+                            name="password2" 
+                            id="id_password2" 
+                            class="form-input" 
+                            placeholder="Confirm your password"
+                            required
+                            autocomplete="new-password"
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('id_password2')">
+                            <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-full btn-large">
+                    <span>Create Account</span>
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="8.5" cy="7" r="4"/>
+                        <line x1="20" y1="8" x2="20" y2="14"/>
+                        <line x1="23" y1="11" x2="17" y2="11"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Auth Footer -->
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{% url 'login' %}" class="auth-link">Sign in here</a></p>
+            <a href="{% url 'landing_page' %}" class="back-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Toggle password visibility
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const button = input.nextElementSibling;
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            button.classList.add('showing');
+        } else {
+            input.type = 'password';
+            button.classList.remove('showing');
+        }
+    }
+    
+    // Form validation
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const fullName = document.getElementById('id_full_name').value.trim();
+        const email = document.getElementById('id_email').value.trim();
+        const employeeId = document.getElementById('id_employee_id').value.trim();
+        const department = document.getElementById('id_department').value.trim();
+        const password1 = document.getElementById('id_password1').value;
+        const password2 = document.getElementById('id_password2').value;
+        
+        // Validation
+        if (!fullName) {
+            e.preventDefault();
+            showMessage('Please enter your full name.', 'error');
+            return false;
+        }
+        
+        if (!email) {
+            e.preventDefault();
+            showMessage('Please enter your email address.', 'error');
+            return false;
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            e.preventDefault();
+            showMessage('Please enter a valid email address.', 'error');
+            return false;
+        }
+        
+        if (!employeeId) {
+            e.preventDefault();
+            showMessage('Please enter your employee ID.', 'error');
+            return false;
+        }
+        
+        if (!department) {
+            e.preventDefault();
+            showMessage('Please enter your department.', 'error');
+            return false;
+        }
+        
+        if (password1.length < 8) {
+            e.preventDefault();
+            showMessage('Password must be at least 8 characters long.', 'error');
+            return false;
+        }
+        
+        if (password1 !== password2) {
+            e.preventDefault();
+            showMessage('Passwords do not match.', 'error');
+            return false;
+        }
+        
+        return true;
+    });
+</script>
+{% endblock %}

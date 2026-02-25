@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Employees List - HRMS Portal{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <!-- Admin Navbar -->
+    <nav class="navbar navbar-admin">
+        <div class="navbar-brand">
+            <a href="{% url 'admin_dashboard' %}">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="12" width="48" height="40" rx="4" stroke="currentColor" stroke-width="3" fill="none"/>
+                    <line x1="8" y1="22" x2="56" y2="22" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="20" cy="17" r="2" fill="currentColor"/>
+                    <circle cx="28" cy="17" r="2" fill="currentColor"/>
+                    <circle cx="36" cy="17" r="2" fill="currentColor"/>
+                    <rect x="16" y="30" width="14" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <line x1="36" y1="32" x2="48" y2="32" stroke="currentColor" stroke-width="2"/>
+                    <line x1="36" y1="38" x2="44" y2="38" stroke="currentColor" stroke-width="2"/>
+                    <line x1="36" y1="44" x2="48" y2="44" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>HRMS Portal <small>Admin</small></span>
+            </a>
+        </div>
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a href="{% url 'admin_dashboard' %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'leave_requests' %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    Leave Requests
+                </a>
+            </li>
+            <li class="nav-item active">
+                <a href="{% url 'employees_list' %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Employees
+                </a>
+            </li>
+        </ul>
+        <div class="navbar-user">
+            <span class="user-name">{{ request.user.full_name|default:request.user.username }}</span>
+            <span class="user-role">Admin</span>
+            <a href="{% url 'logout' %}" class="btn btn-outline btn-small">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Logout
+            </a>
+        </div>
+    </nav>
+    
+    <!-- Content -->
+    <div class="dashboard-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="header-content">
+                <div>
+                    <h1>Employees</h1>
+                    <p>Manage and view all registered employees</p>
+                </div>
+                <div class="header-stats">
+                    <span class="stat-pill">
+                        <strong>{{ employees|length }}</strong> Total Employees
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Employees Table -->
+        {% if employees %}
+        <div class="table-container">
+            <table class="data-table employees-table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Employee ID</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Joined Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr>
+                        <td>
+                            <div class="employee-cell">
+                                <div class="employee-avatar">
+                                    {{ employee.full_name|default:employee.username|first|upper }}
+                                </div>
+                                <div class="employee-info">
+                                    <span class="employee-name">{{ employee.full_name|default:employee.username }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <code class="employee-id">{{ employee.employee_id|default:"N/A" }}</code>
+                        </td>
+                        <td>
+                            <a href="mailto:{{ employee.email }}" class="email-link">{{ employee.email }}</a>
+                        </td>
+                        <td>
+                            <span class="dept-badge">{{ employee.department|default:"N/A" }}</span>
+                        </td>
+                        <td>{{ employee.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            {% if employee.is_active %}
+                                <span class="status-badge status-approved">Active</span>
+                            {% else %}
+                                <span class="status-badge status-rejected">Inactive</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <p>No employees registered yet</p>
+            <p class="empty-hint">Employees will appear here once they register.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
