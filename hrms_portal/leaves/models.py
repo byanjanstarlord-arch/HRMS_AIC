@@ -6,6 +6,8 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 
+from .holiday_calendar import get_chargeable_leave_days
+
 
 class LeaveRequest(models.Model):
     """
@@ -112,11 +114,8 @@ class LeaveRequest(models.Model):
         return f"{self.user.full_name or self.user.username} - {self.get_leave_type_display()} ({self.start_date} to {self.end_date})"
     
     def get_duration_days(self):
-        """Calculate the duration of leave in days"""
-        if self.start_date and self.end_date:
-            delta = self.end_date - self.start_date
-            return delta.days + 1  # Include both start and end dates
-        return 0
+        """Calculate chargeable leave days after applying leave rules."""
+        return get_chargeable_leave_days(self.start_date, self.end_date, self.leave_type)
     
     def is_pending(self):
         """Check if the request is pending"""

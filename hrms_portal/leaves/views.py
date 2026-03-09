@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from .models import LeaveRequest
 from .forms import LeaveApplicationForm
+from .holiday_calendar import get_excluded_holiday_strings
 
 
 # ==================== EMPLOYEE LEAVE VIEWS ====================
@@ -52,6 +53,7 @@ def apply_leave(request):
         'casual_leaves': request.user.casual_leaves,
         'earned_leaves': request.user.earned_leaves,
         'medical_leaves': request.user.medical_leaves,
+        'holiday_dates': get_excluded_holiday_strings(),
     }
 
     return render(request, 'leaves/apply_leave.html', context)

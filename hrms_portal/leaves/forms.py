@@ -4,10 +4,10 @@ Leaves Forms - Leave application forms
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 from datetime import date
 
 from .models import LeaveRequest
+from .holiday_calendar import get_chargeable_leave_days
 
 
 class LeaveApplicationForm(forms.ModelForm):
@@ -76,7 +76,13 @@ class LeaveApplicationForm(forms.ModelForm):
 
         # Check available balance for limited leave types
         if start_date and end_date and leave_type and self.user:
-            days = (end_date - start_date).days + 1
+            days = get_chargeable_leave_days(start_date, end_date, leave_type)
+
+            if leave_type == 'casual' and days == 0:
+                raise ValidationError({
+                    'leave_type': 'Selected dates fall only on configured holidays. Casual leave is not required for these days.'
+                })
+
             if leave_type in ['casual', 'earned', 'medical']:
                 balance = self.user.get_leave_balance(leave_type)
                 if days > balance:
