@@ -2,6 +2,8 @@
 Leaves Views - Leave management views
 """
 
+import logging
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -22,6 +24,7 @@ from .holiday_calendar import get_excluded_holiday_strings
 
 EMAIL_ACTION_SALT = 'leave-email-action'
 EMAIL_ACTION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+logger = logging.getLogger(__name__)
 
 
 # ==================== EMPLOYEE LEAVE VIEWS ====================
@@ -115,6 +118,7 @@ def apply_leave(request):
                 email.attach_alternative(html_message, 'text/html')
                 email.send(fail_silently=False)
             except Exception:
+                logger.exception('Failed to send leave notification email for request #%s', leave_request.id)
                 messages.warning(request, 'Leave request submitted, but email notification could not be sent to admin.')
 
             messages.success(
