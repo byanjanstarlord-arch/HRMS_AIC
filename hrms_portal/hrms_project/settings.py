@@ -144,6 +144,8 @@ CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 
 # Security settings for production
 if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
