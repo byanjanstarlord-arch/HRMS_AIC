@@ -1,6 +1,1 @@
-web: gunicorn --chdir=hrms_portal hrms_project.wsgi:application --bind 0.0.0.0:$PORT
-# release step migrates and creates an admin account if it doesn't exist
-release: |
-  python manage.py migrate
-  python manage.py createsuperuser --noinput --username "$DJANGO_SUPERUSER_USERNAME" \
-    --email "$DJANGO_SUPERUSER_EMAIL" || true
+web: gunicorn hrms_project.wsgi:application --bind 0.0.0.0:$PORT

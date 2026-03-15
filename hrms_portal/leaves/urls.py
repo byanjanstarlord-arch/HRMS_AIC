@@ -15,6 +15,7 @@ urlpatterns = [
     path('leave-requests/', views.leave_requests, name='leave_requests'),
     path('leave/<int:leave_id>/approve/', views.approve_leave, name='approve_leave'),
     path('leave/<int:leave_id>/reject/', views.reject_leave, name='reject_leave'),
+    path('leave/<int:leave_id>/email-action/<str:action>/', views.leave_email_action, name='leave_email_action'),
     
     # AJAX API endpoints
     path('api/leave-requests/', views.get_leave_requests_ajax, name='leave_requests_ajax'),

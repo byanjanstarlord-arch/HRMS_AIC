@@ -19,7 +19,7 @@ CASUAL_LEAVE_EXCLUDED_HOLIDAYS = {
 
 
 def get_chargeable_leave_days(start_date: date, end_date: date, leave_type: str) -> int:
-    """Return leave days to charge after applying holiday rules."""
+    """Return leave days to charge after applying casual-leave exclusion rules."""
     if not start_date or not end_date or end_date < start_date:
         return 0
 
@@ -30,7 +30,9 @@ def get_chargeable_leave_days(start_date: date, end_date: date, leave_type: str)
     excluded_days = 0
     current_day = start_date
     while current_day <= end_date:
-        if current_day in CASUAL_LEAVE_EXCLUDED_HOLIDAYS:
+        is_configured_holiday = current_day in CASUAL_LEAVE_EXCLUDED_HOLIDAYS
+        is_sunday = current_day.weekday() == 6
+        if is_configured_holiday or is_sunday:
             excluded_days += 1
         current_day += timedelta(days=1)
 

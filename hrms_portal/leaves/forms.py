@@ -80,7 +80,7 @@ class LeaveApplicationForm(forms.ModelForm):
 
             if leave_type == 'casual' and days == 0:
                 raise ValidationError({
-                    'leave_type': 'Selected dates fall only on configured holidays. Casual leave is not required for these days.'
+                    'leave_type': 'Selected dates fall only on excluded holidays/weekends. Casual leave is not required for these days.'
                 })
 
             if leave_type in ['casual', 'earned', 'medical']:

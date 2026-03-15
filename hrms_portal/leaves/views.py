@@ -9,11 +9,19 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.core.paginator import Paginator
+from django.core.mail import EmailMultiAlternatives
+from django.core import signing
+from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
 
 from .models import LeaveRequest
 from .forms import LeaveApplicationForm
 from .holiday_calendar import get_excluded_holiday_strings
+
+
+EMAIL_ACTION_SALT = 'leave-email-action'
+EMAIL_ACTION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
 
 
 # ==================== EMPLOYEE LEAVE VIEWS ====================
@@ -35,8 +43,82 @@ def apply_leave(request):
         form = LeaveApplicationForm(request.POST, user=request.user)
         if form.is_valid():
             leave_request = form.save(user=request.user)
+
+            applicant_name = request.user.full_name or request.user.username
+            applicant_email = request.user.email or 'N/A'
+            duration_days = leave_request.get_duration_days()
+            submitted_at = timezone.localtime(leave_request.created_at).strftime('%Y-%m-%d %H:%M:%S')
+            subject = f'New Leave Application - #{leave_request.id}'
+            approve_token = signing.dumps(
+                {'leave_id': leave_request.id, 'action': 'approve'},
+                salt=EMAIL_ACTION_SALT,
+            )
+            reject_token = signing.dumps(
+                {'leave_id': leave_request.id, 'action': 'reject'},
+                salt=EMAIL_ACTION_SALT,
+            )
+            approve_url = request.build_absolute_uri(
+                f"{reverse('leave_email_action', kwargs={'leave_id': leave_request.id, 'action': 'approve'})}?token={approve_token}"
+            )
+            reject_url = request.build_absolute_uri(
+                f"{reverse('leave_email_action', kwargs={'leave_id': leave_request.id, 'action': 'reject'})}?token={reject_token}"
+            )
+            message = (
+                f'A new leave application has been submitted.\n\n'
+                f'Reference ID: #{leave_request.id}\n'
+                f'Applicant: {applicant_name}\n'
+                f'Applicant Email: {applicant_email}\n'
+                f'Leave Type: {leave_request.get_leave_type_display()}\n'
+                f'Start Date: {leave_request.start_date}\n'
+                f'End Date: {leave_request.end_date}\n'
+                f'Duration (days): {duration_days}\n'
+                f'Reason: {leave_request.reason}\n'
+                f'Submitted At: {submitted_at}\n'
+                f'\nQuick Actions (Admin):\n'
+                f'Approve: {approve_url}\n'
+                f'Decline: {reject_url}\n'
+            )
+
+            html_message = f"""
+            <html>
+              <body style=\"font-family: Arial, sans-serif; color: #222; line-height: 1.5;\">
+                <h2 style=\"margin-bottom: 8px;\">New Leave Application Submitted</h2>
+                <p style=\"margin-top: 0; color: #555;\">Reference ID: <strong>#{leave_request.id}</strong></p>
+                <table style=\"border-collapse: collapse; width: 100%; max-width: 680px;\">
+                  <tr><td style=\"padding: 8px; border: 1px solid #ddd; width: 220px;\"><strong>Applicant</strong></td><td style=\"padding: 8px; border: 1px solid #ddd;\">{applicant_name}</td></tr>
+                  <tr><td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Applicant Email</strong></td><td style=\"padding: 8px; border: 1px solid #ddd;\">{applicant_email}</td></tr>
+                  <tr><td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Leave Type</strong></td><td style=\"padding: 8px; border: 1px solid #ddd;\">{leave_request.get_leave_type_display()}</td></tr>
+                  <tr><td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Start Date</strong></td><td style=\"padding: 8px; border: 1px solid #ddd;\">{leave_request.start_date}</td></tr>
+                  <tr><td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>End Date</strong></td><td style=\"padding: 8px; border: 1px solid #ddd;\">{leave_request.end_date}</td></tr>
+                  <tr><td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Duration (days)</strong></td><td style=\"padding: 8px; border: 1px solid #ddd;\">{duration_days}</td></tr>
+                  <tr><td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Submitted At</strong></td><td style=\"padding: 8px; border: 1px solid #ddd;\">{submitted_at}</td></tr>
+                </table>
+                <h3 style=\"margin-top: 18px; margin-bottom: 8px;\">Reason</h3>
+                <p style=\"padding: 10px; background: #f7f7f7; border: 1px solid #e6e6e6; max-width: 680px; white-space: pre-wrap;\">{leave_request.reason}</p>
+                                <h3 style="margin-top: 18px; margin-bottom: 10px;">Quick Actions</h3>
+                                <p style="max-width: 680px; margin-bottom: 10px; color: #555;">Admin can review and take action directly from this email.</p>
+                                <div style="max-width: 680px;">
+                                    <a href="{approve_url}" style="display: inline-block; padding: 10px 16px; margin-right: 8px; background: #16a34a; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;">Approve</a>
+                                    <a href="{reject_url}" style="display: inline-block; padding: 10px 16px; background: #dc2626; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;">Decline</a>
+                                </div>
+              </body>
+            </html>
+            """
+
+            try:
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[settings.ADMIN_NOTIFICATION_EMAIL],
+                )
+                email.attach_alternative(html_message, 'text/html')
+                email.send(fail_silently=False)
+            except Exception:
+                messages.warning(request, 'Leave request submitted, but email notification could not be sent to admin.')
+
             messages.success(
-                request, 
+                request,
                 f'Your leave request has been submitted successfully! '
                 f'Reference ID: #{leave_request.id}'
             )
@@ -311,3 +393,53 @@ def check_new_requests(request):
                 for leave in recent_updates
             ]
         })
+
+
+@login_required
+@require_http_methods(["GET"])
+def leave_email_action(request, leave_id, action):
+    """Approve or reject a leave request directly from a signed email link."""
+    if not request.user.is_admin():
+        messages.error(request, 'Access denied. Only administrators can perform this action.')
+        return redirect('employee_dashboard')
+
+    leave = get_object_or_404(LeaveRequest, id=leave_id)
+    token = request.GET.get('token', '')
+    if not token:
+        messages.error(request, 'Missing action token. Please use the latest email link.')
+        return redirect('leave_requests')
+
+    try:
+        payload = signing.loads(
+            token,
+            salt=EMAIL_ACTION_SALT,
+            max_age=EMAIL_ACTION_MAX_AGE_SECONDS,
+        )
+    except signing.SignatureExpired:
+        messages.error(request, 'This email action link has expired. Please use the dashboard.')
+        return redirect('leave_requests')
+    except signing.BadSignature:
+        messages.error(request, 'Invalid email action link. Please use the dashboard.')
+        return redirect('leave_requests')
+
+    if payload.get('leave_id') != leave_id or payload.get('action') != action:
+        messages.error(request, 'Invalid action details in link. Please use the dashboard.')
+        return redirect('leave_requests')
+
+    if not leave.is_pending():
+        messages.warning(request, f'Leave request #{leave.id} is already {leave.get_status_display().lower()}.')
+        return redirect('leave_requests')
+
+    try:
+        if action == 'approve':
+            leave.approve(admin_user=request.user, remarks='Approved via email action link.')
+            messages.success(request, f'Leave request #{leave.id} approved successfully.')
+        elif action == 'reject':
+            leave.reject(admin_user=request.user, remarks='Rejected via email action link.')
+            messages.success(request, f'Leave request #{leave.id} rejected successfully.')
+        else:
+            messages.error(request, 'Unsupported action. Please use the dashboard.')
+    except ValueError as error:
+        messages.error(request, str(error))
+
+    return redirect('leave_requests')
