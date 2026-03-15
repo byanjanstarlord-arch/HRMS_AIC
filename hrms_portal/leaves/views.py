@@ -12,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.core.paginator import Paginator
 from django.core.mail import EmailMultiAlternatives
+from django.core.mail import get_connection
 from django.core import signing
 from django.conf import settings
 from django.urls import reverse
@@ -117,9 +118,38 @@ def apply_leave(request):
                 )
                 email.attach_alternative(html_message, 'text/html')
                 email.send(fail_silently=False)
-            except Exception:
-                logger.exception('Failed to send leave notification email for request #%s', leave_request.id)
-                messages.warning(request, 'Leave request submitted, but email notification could not be sent to admin.')
+            except Exception as primary_error:
+                logger.exception(
+                    'Primary SMTP send failed for leave request #%s. Retrying with Gmail SSL fallback.',
+                    leave_request.id,
+                )
+                try:
+                    fallback_connection = get_connection(
+                        backend='django.core.mail.backends.smtp.EmailBackend',
+                        host=settings.EMAIL_HOST,
+                        port=int(getattr(settings, 'EMAIL_FALLBACK_PORT', 465)),
+                        username=settings.EMAIL_HOST_USER,
+                        password=settings.EMAIL_HOST_PASSWORD,
+                        use_tls=False,
+                        use_ssl=True,
+                        timeout=getattr(settings, 'EMAIL_TIMEOUT', 15),
+                    )
+                    email = EmailMultiAlternatives(
+                        subject=subject,
+                        body=message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[settings.ADMIN_NOTIFICATION_EMAIL],
+                        connection=fallback_connection,
+                    )
+                    email.attach_alternative(html_message, 'text/html')
+                    email.send(fail_silently=False)
+                except Exception:
+                    logger.exception(
+                        'Fallback SMTP send also failed for leave request #%s. Primary error: %s',
+                        leave_request.id,
+                        primary_error,
+                    )
+                    messages.warning(request, 'Leave request submitted, but email notification could not be sent to admin.')
 
             messages.success(
                 request,
