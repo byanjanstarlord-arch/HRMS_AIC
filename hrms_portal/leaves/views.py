@@ -12,7 +12,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.core.paginator import Paginator
-from django.core.mail import EmailMultiAlternatives, get_connection
+from django.core.mail import EmailMultiAlternatives
 from django.core import signing
 from django.conf import settings
 from django.urls import reverse
@@ -29,38 +29,22 @@ logger = logging.getLogger(__name__)
 
 
 def _send_leave_notification_async(subject, message, html_message, from_email, to_email):
-    """Send leave notification email in a background thread with 587/465 fallback."""
+    """Send leave notification email in a background thread (non-blocking)."""
     def _send():
-        timeout = int(getattr(settings, 'EMAIL_TIMEOUT', 3))
-        for port, use_tls, use_ssl in [(587, True, False), (465, False, True)]:
-            try:
-                conn = get_connection(
-                    backend='django.core.mail.backends.smtp.EmailBackend',
-                    host=settings.EMAIL_HOST,
-                    port=port,
-                    username=settings.EMAIL_HOST_USER,
-                    password=settings.EMAIL_HOST_PASSWORD,
-                    use_tls=use_tls,
-                    use_ssl=use_ssl,
-                    timeout=timeout,
-                )
-                email = EmailMultiAlternatives(
-                    subject=subject,
-                    body=message,
-                    from_email=from_email,
-                    to=[to_email],
-                    connection=conn,
-                )
-                email.attach_alternative(html_message, 'text/html')
-                email.send(fail_silently=False)
-                logger.info('Leave notification sent via port %s', port)
-                return
-            except Exception as exc:
-                logger.warning('SMTP port %s failed: %s', port, exc)
-        logger.error('All SMTP attempts failed for leave notification to %s', to_email)
+        try:
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=message,
+                from_email=from_email,
+                to=[to_email],
+            )
+            email.attach_alternative(html_message, 'text/html')
+            email.send(fail_silently=False)
+            logger.info('Leave notification email sent to %s', to_email)
+        except Exception as exc:
+            logger.exception('Failed to send leave notification email to %s: %s', to_email, exc)
 
-    t = threading.Thread(target=_send, daemon=True)
-    t.start()
+    threading.Thread(target=_send, daemon=True).start()
 
 
 # ==================== EMPLOYEE LEAVE VIEWS ====================
