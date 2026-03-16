@@ -12,7 +12,6 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.core.paginator import Paginator
-from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core import signing
 from django.conf import settings
 from django.urls import reverse
@@ -21,6 +20,7 @@ from django.utils import timezone
 from .models import LeaveRequest
 from .forms import LeaveApplicationForm
 from .holiday_calendar import get_excluded_holiday_strings
+from hrms_project.gmail_service import send_email
 
 
 EMAIL_ACTION_SALT = 'leave-email-action'
@@ -28,36 +28,19 @@ EMAIL_ACTION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
 logger = logging.getLogger(__name__)
 
 
-def _send_leave_notification_async(subject, message, html_message, from_email, to_email):
-    """Send leave notification email in a background thread with 587/465 fallback."""
+def _send_leave_notification_async(subject, message, html_message, to_email):
+    """Send leave notification email in a background thread using Gmail API."""
     def _send():
-        timeout = int(getattr(settings, 'EMAIL_TIMEOUT', 3))
-        for port, use_tls, use_ssl in [(587, True, False), (465, False, True)]:
-            try:
-                conn = get_connection(
-                    backend='django.core.mail.backends.smtp.EmailBackend',
-                    host=settings.EMAIL_HOST,
-                    port=port,
-                    username=settings.EMAIL_HOST_USER,
-                    password=settings.EMAIL_HOST_PASSWORD,
-                    use_tls=use_tls,
-                    use_ssl=use_ssl,
-                    timeout=timeout,
-                )
-                email = EmailMultiAlternatives(
-                    subject=subject,
-                    body=message,
-                    from_email=from_email,
-                    to=[to_email],
-                    connection=conn,
-                )
-                email.attach_alternative(html_message, 'text/html')
-                email.send(fail_silently=False)
-                logger.info('Leave notification sent via port %s', port)
-                return
-            except Exception as exc:
-                logger.warning('SMTP port %s failed: %s', port, exc)
-        logger.error('All SMTP attempts failed for leave notification to %s', to_email)
+        try:
+            send_email(
+                to_email=to_email,
+                subject=subject,
+                message=message,
+                html_message=html_message,
+            )
+            logger.info('Leave notification email sent to %s via Gmail API', to_email)
+        except Exception as exc:
+            logger.exception('Failed to send leave notification email to %s: %s', to_email, exc)
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -147,7 +130,6 @@ def apply_leave(request):
                 subject=subject,
                 message=message,
                 html_message=html_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
                 to_email=settings.ADMIN_NOTIFICATION_EMAIL,
             )
 
