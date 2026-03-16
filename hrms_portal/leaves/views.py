@@ -45,6 +45,66 @@ def _send_leave_notification_async(subject, message, html_message, to_email):
     threading.Thread(target=_send, daemon=True).start()
 
 
+def _send_employee_status_update_async(leave, status, remarks=''):
+        """Notify employee by email when leave status is approved/rejected."""
+        to_email = (leave.user.email or '').strip()
+        if not to_email:
+                logger.warning('Employee email missing for leave #%s; skipping status email.', leave.id)
+                return
+
+        status_display = 'Approved' if status == 'approved' else 'Declined'
+        subject = f'Leave Request #{leave.id} {status_display}'
+        employee_name = leave.user.full_name or leave.user.username
+        action_date = timezone.localtime(leave.action_date).strftime('%Y-%m-%d %H:%M:%S') if leave.action_date else 'N/A'
+        remarks_text = remarks or leave.remarks or 'No remarks provided.'
+
+        message = (
+                f'Hello {employee_name},\n\n'
+                f'Your leave request has been {status_display.lower()}.\n\n'
+                f'Reference ID: #{leave.id}\n'
+                f'Leave Type: {leave.get_leave_type_display()}\n'
+                f'Start Date: {leave.start_date}\n'
+                f'End Date: {leave.end_date}\n'
+                f'Status: {status_display}\n'
+                f'Remarks: {remarks_text}\n'
+                f'Action Time: {action_date}\n\n'
+                f'Thank you.'
+        )
+
+        html_message = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #222; line-height: 1.5;">
+                <h2 style="margin-bottom: 8px;">Leave Request {status_display}</h2>
+                <p>Hello <strong>{employee_name}</strong>,</p>
+                <p>Your leave request has been <strong>{status_display.lower()}</strong>.</p>
+                <table style="border-collapse: collapse; width: 100%; max-width: 680px;">
+                    <tr><td style="padding: 8px; border: 1px solid #ddd; width: 220px;"><strong>Reference ID</strong></td><td style="padding: 8px; border: 1px solid #ddd;">#{leave.id}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Leave Type</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{leave.get_leave_type_display()}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Start Date</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{leave.start_date}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>End Date</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{leave.end_date}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Status</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{status_display}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Remarks</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{remarks_text}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Action Time</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{action_date}</td></tr>
+                </table>
+            </body>
+        </html>
+        """
+
+        def _send():
+                try:
+                        send_email(
+                                to_email=to_email,
+                                subject=subject,
+                                message=message,
+                                html_message=html_message,
+                        )
+                        logger.info('Employee status update email sent to %s for leave #%s', to_email, leave.id)
+                except Exception as exc:
+                        logger.exception('Failed employee status email to %s for leave #%s: %s', to_email, leave.id, exc)
+
+        threading.Thread(target=_send, daemon=True).start()
+
+
 # ==================== EMPLOYEE LEAVE VIEWS ====================
 
 @login_required
@@ -279,6 +339,8 @@ def approve_leave(request, leave_id):
     except ValueError as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
+    _send_employee_status_update_async(leave=leave, status='approved', remarks=remarks)
+
     return JsonResponse({
         'success': True,
         'message': f'Leave request #{leave_id} has been approved successfully.',
@@ -316,6 +378,8 @@ def reject_leave(request, leave_id):
     
     # Reject the leave
     leave.reject(admin_user=request.user, remarks=remarks)
+
+    _send_employee_status_update_async(leave=leave, status='rejected', remarks=remarks)
     
     return JsonResponse({
         'success': True,
@@ -449,9 +513,19 @@ def leave_email_action(request, leave_id, action):
     try:
         if action == 'approve':
             leave.approve(admin_user=request.user, remarks='Approved via email action link.')
+            _send_employee_status_update_async(
+                leave=leave,
+                status='approved',
+                remarks='Approved via email action link.',
+            )
             messages.success(request, f'Leave request #{leave.id} approved successfully.')
         elif action == 'reject':
             leave.reject(admin_user=request.user, remarks='Rejected via email action link.')
+            _send_employee_status_update_async(
+                leave=leave,
+                status='rejected',
+                remarks='Rejected via email action link.',
+            )
             messages.success(request, f'Leave request #{leave.id} rejected successfully.')
         else:
             messages.error(request, 'Unsupported action. Please use the dashboard.')
