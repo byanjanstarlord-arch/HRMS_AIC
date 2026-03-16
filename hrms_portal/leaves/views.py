@@ -56,7 +56,7 @@ def _send_employee_status_update_async(leave, status, remarks=''):
         subject = f'Leave Request #{leave.id} {status_display}'
         employee_name = leave.user.full_name or leave.user.username
         action_date = timezone.localtime(leave.action_date).strftime('%Y-%m-%d %H:%M:%S') if leave.action_date else 'N/A'
-        remarks_text = remarks or leave.remarks or 'No remarks provided.'
+        remarks_text = remarks or leave.admin_remarks or 'No remarks provided.'
 
         message = (
                 f'Hello {employee_name},\n\n'
