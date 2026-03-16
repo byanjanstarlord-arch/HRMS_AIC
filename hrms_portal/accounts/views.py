@@ -46,8 +46,17 @@ def employee_register(request):
         form = EmployeeRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # Log the user in after registration
-            login(request, user)
+            # Log the user in after registration using configured backend
+            authenticated_user = authenticate(
+                request,
+                username=user.email,
+                password=form.cleaned_data['password1'],
+            )
+            if authenticated_user is not None:
+                login(request, authenticated_user)
+            else:
+                messages.error(request, 'Account created, but auto-login failed. Please sign in.')
+                return redirect('login')
             messages.success(request, f'Welcome {user.full_name}! Your account has been created successfully.')
             return redirect('employee_dashboard')
         else:
