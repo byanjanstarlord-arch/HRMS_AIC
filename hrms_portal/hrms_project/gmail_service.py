@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -10,14 +11,27 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TOKEN_PATH = os.path.join(BASE_DIR, 'token.json')
 
 
+def _load_credentials():
+    token_json = os.environ.get('GMAIL_TOKEN_JSON', '').strip()
+    if token_json:
+        try:
+            token_info = json.loads(token_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError('Invalid JSON in GMAIL_TOKEN_JSON') from exc
+        return Credentials.from_authorized_user_info(token_info, SCOPES)
+
+    token_path = os.environ.get('GMAIL_TOKEN_PATH', TOKEN_PATH)
+    if os.path.exists(token_path):
+        return Credentials.from_authorized_user_file(token_path, SCOPES)
+
+    raise FileNotFoundError(
+        'Gmail token not found. Set GMAIL_TOKEN_JSON in Railway variables '
+        f'or provide token file at: {token_path}'
+    )
+
+
 def send_email(to_email, subject, message, html_message=None):
-
-    if not os.path.exists(TOKEN_PATH):
-        raise FileNotFoundError(
-            f"Gmail token not found at: {TOKEN_PATH}. Run hrms_project/gmail_auth.py first."
-        )
-
-    creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+    creds = _load_credentials()
 
     service = build('gmail', 'v1', credentials=creds)
 
