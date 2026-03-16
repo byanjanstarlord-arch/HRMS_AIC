@@ -18,13 +18,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# Gmail OAuth secrets/tokens
-credentials.json
-token.json
-token.jason
-hrms_project/credentials.json
-hrms_project/token.json
-hrms_project/token.jason
 
 # IDE
 .vscode/
